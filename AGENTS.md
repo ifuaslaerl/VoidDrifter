@@ -25,10 +25,10 @@ Create an engaging, fun arcade game in **game.js** using **Phaser 3** (v3.87.0) 
 
 ## What's Allowed
 
--  Base64-encoded images (as `data:` URIs)
--  Procedurally generated graphics using Phaser's Graphics API
--  Generated audio tones using Phaser's Web Audio API
--  Canvas-based rendering and effects
+-  Base64-encoded images (as `data:` URIs)
+-  Procedurally generated graphics using Phaser's Graphics API
+-  Generated audio tones using Phaser's Web Audio API
+-  Canvas-based rendering and effects
 
 ## Development Workflow
 

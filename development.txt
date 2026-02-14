@@ -1,0 +1,111 @@
+# PLANO DE IMPLEMENTAÇÃO: VOID DRIFTER
+# Objetivo: Arcade Roguelite Platformer (Phaser 3)
+# Meta: Single file (game.js), < 50KB final.
+
+==============================================================================
+FASE 1: FUNDAÇÃO & INPUTS (O "Esqueleto")
+Objetivo: Ter uma tela preta que aceita comandos de Arcade corretamente.
+==============================================================================
+
+[x] 1.1. Setup do Phaser (game.js)
+    - Configurar `Phaser.Game` com Arcade Physics.
+    - Definir resolução base (ex: 320x240 ou 640x360) com `zoom` ou `scale` para caber na tela.
+    - Desativar anti-aliasing (pixel art style).
+
+[x] 1.2. Abstração de Input (Arcade Mapping)
+    - Criar objeto `InputManager` para isolar a lógica de teclas.
+    - Mapear teclas do teclado para "Virtual Buttons":
+      - UP/DOWN/LEFT/RIGHT (WASD/Setas)
+      - JUMP (Z / U)
+      - DASH (X / I)
+    - Garantir que o código do jogo só pergunte `Input.isJumpPressed()` e não `Keycodes.Z`.
+
+==============================================================================
+FASE 2: O "TOY" (Física de Precisão)
+Objetivo: O quadrado (Player) deve ser gostoso de controlar numa sala vazia.
+==============================================================================
+
+[ ] 2.1. Player Básico
+    - Renderizar um retângulo simples (`this.add.rectangle`) com corpo físico.
+    - Implementar gravidade e colisão com chão estático.
+
+[ ] 2.2. Movimentação Horizontal
+    - Aceleração e Atrito (não movimento instantâneo) para peso.
+    - Implementar "Air Control" (movimento no ar ligeiramente diferente do chão).
+
+[ ] 2.3. Sistema de Pulo Avançado (CRÍTICO)
+    - Variable Jump Height: Segurar botão = pula mais alto; soltar = cai rápido.
+    - Coyote Time: Permitir pular 5-10 frames após sair da plataforma.
+    - Jump Buffer: Se apertar pular antes de tocar no chão, o pulo sai assim que tocar.
+
+[ ] 2.4. Mecânica de Dash
+    - Implementar State Machine simples (IDLE, RUN, JUMP, DASH).
+    - Dash em 8 direções (ou 4 para simplificar input arcade inicial).
+    - Adicionar "Cooldown" e reset ao tocar no chão.
+    - Efeito visual simples (rastro) para confirmar que o dash aconteceu.
+
+==============================================================================
+FASE 3: ARQUITETURA DE MUNDO (O "Loop")
+Objetivo: Navegar entre salas sem erros.
+==============================================================================
+
+[ ] 3.1. Sistema de Salas (Room Manager)
+    - Criar estrutura de dados para uma Sala (15x30 tiles).
+    - Implementar renderização baseada em Grid (Tilemap manual usando `Phaser.Graphics` ou retângulos estáticos para economizar assets).
+    - Nota: Usar Arrays legíveis por enquanto (ex: 0=ar, 1=parede). Otimizar tamanho depois.
+
+[ ] 3.2. Geração Procedural (Grafo)
+    - Criar algoritmo simples que escolhe uma sala Norte, Sul, Leste ou Oeste.
+    - Garantir que as saídas de uma sala alinham com as entradas da próxima.
+
+[ ] 3.3. Transição de Câmera
+    - Quando o jogador toca na borda da tela, deslizar a câmera ou fazer fade para a próxima sala.
+    - Reposicionar o jogador na entrada oposta.
+
+==============================================================================
+FASE 4: GAMEPLAY LOOP (O Jogo)
+Objetivo: Morrer, Pontuar e Renascer.
+==============================================================================
+
+[ ] 4.1. Perigos (Hazards)
+    - Adicionar "Spikes" (triângulos estáticos).
+    - Colisão Player vs Spike = Respawn/Dano.
+
+[ ] 4.2. Coletáveis (Neon Bits)
+    - Espalhar itens nas salas.
+    - Efeito de coleta (som/partícula).
+    - Incremento de Score.
+
+[ ] 4.3. HUD & Estados de Jogo
+    - Criar Scene de Menu (Simples: "Press Start").
+    - Criar Scene de Game Over (Mostrar Score Final).
+    - HUD in-game: Texto simples com Score e Vidas.
+
+==============================================================================
+FASE 5: "JUICE" & POLIMENTO (A Estética)
+Objetivo: Fazer o jogo parecer "Cyberpunk/Neon" sem usar imagens.
+==============================================================================
+
+[ ] 5.1. Efeitos Visuais (Phaser.Graphics)
+    - Glow: Usar filtros simples ou desenhar linhas duplicadas com alpha menor para simular neon.
+    - Partículas: Explosão de pixels ao pular, dar dash ou morrer.
+    - Screen Shake: Tremor leve ao levar dano.
+
+[ ] 5.2. Áudio Procedural
+    - Implementar sintetizador simples (Oscillator) para sons de Pulo, Dash e Coleta.
+    - Evitar arquivos .mp3/.wav externos.
+
+==============================================================================
+FASE 6: OTIMIZAÇÃO FINAL (A Entrega)
+Objetivo: Encaixar nos 50KB.
+==============================================================================
+
+[ ] 6.1. Compressão de Dados
+    - Converter os Arrays de mapas (legíveis) para Strings comprimidas ou Bitmasks.
+
+[ ] 6.2. Minificação
+    - Passar o código por um minificador (Terser ou similar).
+    - Verificar tamanho final do zip.
+
+[ ] 6.3. Metadata
+    - Atualizar `metadata.json` e `cover.png`.

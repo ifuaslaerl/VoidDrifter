@@ -1,0 +1,54 @@
+# SYSTEM DESIGN: PROJECT "VOID DRIFTER"
+# Versão: 1.0 
+# Stack: Phaser 3 | Vanilla JS | Single File
+
+=== 1. CONCEITO & CORE LOOP ===
+
+A. GÊNERO & INSPIRAÇÕES
+   - Roguelite Dungeon Crawler (Estrutura não-linear).
+   - Precision Platformer (Movimentação tipo "Celeste").
+   - Vibe: Minimalismo Neon.
+
+B. OBJETIVO
+   - Navegar por uma Dungeon Gerada Proceduralmente.
+   - PONTUAÇÃO (Score):
+     * Base: (Salas Exploradas × 100).
+     * Bônus: (Tesouros Coletados × 500).
+
+=== 2. MECÂNICA DE MOVIMENTAÇÃO ===
+
+A. FÍSICA DO JOGADOR
+   - Pulo: Altura Variável + Coyote Time + Jump Buffer.
+   - Dash: 8 Direções + Invencibilidade (i-frames).
+   - Conditional Aerial Boost: Dash aéreo extra que só pode ser utilizado enquanto tocar/raspar em zonas específicas (Risco/Recompensa).
+
+B. VIDA & RECUPERAÇÃO
+   - Começa com X Vidas.
+   - Dano: Knockback.
+   - Recuperação: Coletar Tesouro tem chance de restaurar 1 Vida.
+
+=== 3. ARQUITETURA DE MUNDO (MINI DUNGEON) ===
+
+A. ESTRUTURA
+   - Grafo Direcionado: Salas conectadas (Norte, Sul, Leste, Oeste).
+   - Replayability: As conexões mudam a cada jogo, mas os layouts das salas vêm de um Pool fixo, a sala inicial sempre é a mesma.
+
+B. ROOM DESIGN (Compacto)
+   - Dimensões: 15 tiles (altura) x 30 tiles (largura).
+   - Pool de Templates: 10 Layouts únicos desenhados à mão no código.
+     * Isso ocupa apenas ~4.5KB de texto cru.
+   - Formato dos Dados: Array de Strings simples.
+
+=== 4. INIMIGOS & CENÁRIO (THE HAZARDS) ===
+
+A. ARQUÉTIPOS GENÉRICOS (Reutilizáveis)
+   1. STATIC (Espinhos/Serras).
+   2. TURRET (Dispara projéteis simples).
+   3. BEAM (Laser temporizado).
+   4. PHASING (Plataformas que somem).
+
+=== 5. INPUTS ===
+
+A. SUPORTE UNIVERSAL
+   - Movimento: WASD / Setas.
+   - Ação: Z / X / Espaço / Shift / Enter.
