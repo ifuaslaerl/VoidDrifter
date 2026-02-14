@@ -33,12 +33,12 @@ Objetivo: O quadrado (Player) deve ser gostoso de controlar numa sala vazia.
     - Aceleração e Atrito (não movimento instantâneo) para peso.
     - Implementar "Air Control" (movimento no ar ligeiramente diferente do chão).
 
-[ ] 2.3. Sistema de Pulo Avançado (CRÍTICO)
+[x] 2.3. Sistema de Pulo Avançado (CRÍTICO)
     - Variable Jump Height: Segurar botão = pula mais alto; soltar = cai rápido.
     - Coyote Time: Permitir pular 5-10 frames após sair da plataforma.
     - Jump Buffer: Se apertar pular antes de tocar no chão, o pulo sai assim que tocar.
 
-[ ] 2.4. Mecânica de Dash
+[x] 2.4. Mecânica de Dash
     - Implementar State Machine simples (IDLE, RUN, JUMP, DASH).
     - Dash em 8 direções (ou 4 para simplificar input arcade inicial).
     - Adicionar "Cooldown" e reset ao tocar no chão.
