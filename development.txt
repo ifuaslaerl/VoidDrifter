@@ -25,11 +25,11 @@ FASE 2: O "TOY" (Física de Precisão)
 Objetivo: O quadrado (Player) deve ser gostoso de controlar numa sala vazia.
 ==============================================================================
 
-[ ] 2.1. Player Básico
+[x] 2.1. Player Básico
     - Renderizar um retângulo simples (`this.add.rectangle`) com corpo físico.
     - Implementar gravidade e colisão com chão estático.
 
-[ ] 2.2. Movimentação Horizontal
+[x] 2.2. Movimentação Horizontal
     - Aceleração e Atrito (não movimento instantâneo) para peso.
     - Implementar "Air Control" (movimento no ar ligeiramente diferente do chão).
 
