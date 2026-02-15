@@ -49,7 +49,7 @@ FASE 3: ARQUITETURA DE MUNDO (O "Loop")
 Objetivo: Navegar entre salas sem erros.
 ==============================================================================
 
-[x] 3.1. Sistema de Salas (Room Manager)
+[ ] 3.1. Sistema de Salas (Room Manager)
     - Criar estrutura de dados para uma Sala (15x30 tiles).
     - Implementar renderização baseada em Grid (Tilemap manual usando `Phaser.Graphics` ou retângulos estáticos para economizar assets).
     - Nota: Usar Arrays legíveis por enquanto (ex: 0=ar, 1=parede). Otimizar tamanho depois.
