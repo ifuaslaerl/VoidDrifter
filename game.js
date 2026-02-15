@@ -74,6 +74,78 @@ let input = {
 // Effects
 let trailTimer = 0;
 
+// --- ADVANCED MAP SYSTEM ---
+
+// 1. THE ARCHITECTURE (Room Designs)
+// We store layouts by ID so we can reuse them (e.g., 'CORRIDOR_V' can appear 5 times)
+const ROOM_TEMPLATES = {
+    'START': [
+        "WWWWWWWWWWWWWWWWWWWW",
+        "W..................W",
+        "W..................W",
+        "W.P................W",
+        "WWWW.......WWWW....W",
+        "W..................W",
+        "W......WW..........W",
+        "W............WW....W",
+        "W...WW.............W",
+        "W..................W",
+        "W..................W",
+        "W..................W",
+        "W..................W",
+        "W...................", // Exit East
+        "WWWWWWWWWWWWWWWWWWWW"
+    ],
+    'HALLWAY': [
+        "WWWWWWWWWWWWWWWWWWWW",
+        "W..................W",
+        "W...WW.............W",
+        "W.......WW.........W",
+        "W...........WW.....W",
+        "W...............WW.W",
+        "W..................W",
+        "W..................W",
+        "W.WW...............W",
+        "...................W", // Exit West
+        "W.....WW...........W",
+        "W..................W",
+        "W.........WW.......W",
+        "W...................", // Exit East
+        "WWWWWWWWWWWWWWWWWWWW"
+    ],
+    'PIT': [
+        "WWWWWWWWWWWWWWWWWWWW",
+        "W..................W",
+        "W...WWWWWWWWWWWW...W",
+        "W...W..........W...W",
+        "W...W..........W...W",
+        "W...W..........W...W",
+        "W...W..........W...W",
+        "W...W..........W...W",
+        "W...W..........W...W",
+        "W..................W",
+        "W..................W",
+        "W..................W",
+        "W...WW........WW...W",
+        "...................W", // Exit West
+        "WWWWWWWWWWWWWWWWWWWW"
+    ]
+};
+
+// 2. THE WORLD MAP (The Grid)
+// null = Void/Wall. String = Room Template ID.
+// This 3x3 grid represents your entire dungeon.
+const DUNGEON_GRID = [
+    [null,      null,      null],
+    ['START', 'HALLWAY', 'PIT'], // (0,1) -> (1,1) -> (2,1)
+    [null,      null,      null]
+];
+
+// 3. STATE
+let dungeonX = 0; // Starting Grid X
+let dungeonY = 1; // Starting Grid Y (Middle row)
+let isTransitioning = false;
+
 function preload() {
     // No external assets - purely procedural
 }
@@ -82,41 +154,36 @@ function create() {
     // 1. SETUP WORLD
     platforms = this.physics.add.staticGroup();
     
-    // Create a "Playground" level
-    createPlatform(this, 400, 580, 800, 40); // Floor
-    createPlatform(this, 200, 450, 200, 20); // Low Left
-    createPlatform(this, 600, 350, 200, 20); // Mid Right
-    createPlatform(this, 100, 250, 100, 20); // High Left
-    createPlatform(this, 400, 150, 100, 20); // Top Center
-
     // 2. SETUP PLAYER
-    player = this.add.rectangle(400, 500, 24, 24, COLORS.PLAYER);
+    // Created off-screen initially, moved by loadLevel
+    player = this.add.rectangle(-100, -100, 24, 24, COLORS.PLAYER);
     this.physics.add.existing(player);
-    player.body.setCollideWorldBounds(true);
-    player.body.setDragX(PHY.RUN_SPEED * 4); // Snappy stop
+    // IMPORTANT: Allow checking bounds manually later
+    player.body.setCollideWorldBounds(true); 
+    player.body.onWorldBounds = true; 
+    player.body.setDragX(PHY.RUN_SPEED * 4);
 
     this.physics.add.collider(player, platforms);
 
-    // 3. SETUP INPUTS
-    // Map multiple keys to abstract actions
+    // 3. LOAD INITIAL ROOM
+    this.hasSpawned = false; 
+    loadDungeonRoom(this, dungeonX, dungeonY);
+
+    // 4. SETUP INPUTS
     keys = this.input.keyboard.addKeys({
         up: Phaser.Input.Keyboard.KeyCodes.UP, w: Phaser.Input.Keyboard.KeyCodes.W,
         down: Phaser.Input.Keyboard.KeyCodes.DOWN, s: Phaser.Input.Keyboard.KeyCodes.S,
         left: Phaser.Input.Keyboard.KeyCodes.LEFT, a: Phaser.Input.Keyboard.KeyCodes.A,
         right: Phaser.Input.Keyboard.KeyCodes.RIGHT, d: Phaser.Input.Keyboard.KeyCodes.D,
-        
-        // Jump: Z, Space, Arcade Buttons (U/J)
         jump1: Phaser.Input.Keyboard.KeyCodes.Z, 
         jump2: Phaser.Input.Keyboard.KeyCodes.SPACE,
         jump3: Phaser.Input.Keyboard.KeyCodes.U,
-        
-        // Dash: X, Shift, Arcade Buttons (I/K)
         dash1: Phaser.Input.Keyboard.KeyCodes.X,
         dash2: Phaser.Input.Keyboard.KeyCodes.SHIFT,
         dash3: Phaser.Input.Keyboard.KeyCodes.I
     });
 
-    // 4. GUI
+    // 5. GUI
     this.debugText = this.add.text(10, 10, '', {
         fontFamily: 'monospace', fontSize: '12px', color: '#00ff00'
     });
@@ -217,6 +284,56 @@ function update(time, delta) {
         `COYOTE: ${Math.round(pState.coyoteTimer)}\n` +
         `BUFFER: ${Math.round(pState.jumpBufferTimer)}`
     );
+
+    if (!isTransitioning) {
+	let nextDX = dungeonX;
+	let nextDY = dungeonY;
+	let transitionDir = '';
+
+        // Check Exits
+        if (player.x > 800 - 16) { 
+            nextDX++; transitionDir = 'right'; 
+        } 
+        else if (player.x < 16) { 
+            nextDX--; transitionDir = 'left'; 
+        }
+        else if (player.y > 600 - 16) { 
+            nextDY++; transitionDir = 'down'; 
+        }
+        else if (player.y < 16) { 
+            nextDY--; transitionDir = 'up'; 
+        }
+
+        // Process Transition
+        if (transitionDir !== '') {
+            // Check if the target room exists in the grid
+            if (
+                nextDY >= 0 && nextDY < DUNGEON_GRID.length &&
+                nextDX >= 0 && nextDX < DUNGEON_GRID[0].length &&
+                DUNGEON_GRID[nextDY][nextDX] !== null
+            ) {
+            switchRoom(this, nextDX, nextDY, transitionDir);
+            } else {
+                // It's a wall/edge of map - push player back slightly
+                if (transitionDir === 'right') player.x = 780;
+                if (transitionDir === 'left') player.x = 20;
+                if (transitionDir === 'down') player.y = 580;
+                if (transitionDir === 'up') player.y = 20;
+            }
+        }
+    }
+
+    // --- STEP 6: ROOM TRANSITIONS ---
+    if (!isTransitioning) {
+        // Right Edge -> Go to Room 1
+        if (player.x > 800 - 15) { 
+            if (currentRoomIndex === 0) switchRoom(this, 1, 'right');
+        } 
+        // Left Edge -> Go back to Room 0
+        else if (player.x < 15) { 
+            if (currentRoomIndex === 1) switchRoom(this, 0, 'left');
+        }
+    }
 }
 
 // --- HELPERS ---
@@ -291,4 +408,166 @@ function createTrail(scene, target) {
         duration: 100,
         onComplete: () => trail.destroy()
     });
+}
+
+function loadDungeonRoom(scene, dx, dy) {
+    // 1. Validation
+    if (dy < 0 || dy >= DUNGEON_GRID.length || dx < 0 || dx >= DUNGEON_GRID[0].length) {
+        console.error("Out of bounds!");
+        return;
+    }
+    
+    const roomId = DUNGEON_GRID[dy][dx];
+    if (!roomId) {
+        console.error("Trying to load null room!"); 
+        return;
+    }
+
+    const layout = ROOM_TEMPLATES[roomId];
+
+    // 2. Clear & Build
+    platforms.clear(true, true); 
+    const TILE_SIZE = 40;
+
+    for (let row = 0; row < layout.length; row++) {
+        const line = layout[row];
+        for (let col = 0; col < line.length; col++) {
+            const char = line[col];
+            const x = col * TILE_SIZE + (TILE_SIZE/2);
+            const y = row * TILE_SIZE + (TILE_SIZE/2);
+
+            if (char === 'W') {
+                createPlatform(scene, x, y, TILE_SIZE, TILE_SIZE);
+            }
+            // Add Hazards/Enemies here later (e.g. if char === '^')
+            
+            // Only spawn at 'P' if it's the very first game load
+            if (char === 'P' && !scene.hasSpawned) {
+                player.setPosition(x, y);
+                scene.hasSpawned = true;
+            }
+        }
+    }
+}
+
+function switchRoom(scene, nextX, nextY, transitionDir) {
+    if (nextY < 0 || nextY >= DUNGEON_GRID.length ||
+        nextX < 0 || nextX >= DUNGEON_GRID[0].length ||
+        !DUNGEON_GRID[nextY][nextX]) {
+        return;
+    }
+
+    isTransitioning = true;
+    scene.physics.pause();
+    player.body.setVelocity(0, 0);
+    const nextRoomId = DUNGEON_GRID[nextY][nextX];
+
+    scene.cameras.main.fadeOut(200, 0, 0, 0);
+
+    scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        dungeonX = nextX;
+        dungeonY = nextY;
+        loadDungeonRoom(scene, dungeonX, dungeonY);
+
+        // --- STRICT BORDER SPAWN LOGIC ---
+
+        const TILE_SIZE = 40;
+
+        // 1. Calculate Player's Current "Grid" position (to preserve alignment)
+        let currentGridY = Math.floor(player.y / TILE_SIZE);
+        let currentGridX = Math.floor(player.x / TILE_SIZE);
+
+        // 2. Determine Target Border based on direction
+        let targetGridX = currentGridX;
+        let targetGridY = currentGridY;
+        let scanAxis = '';
+
+        if (transitionDir === 'right') {
+            // Enter LEFT wall of new room (Column 0)
+            targetGridX = 0;
+            targetGridY = currentGridY; // Try to keep Y
+            scanAxis = 'vertical';
+        }
+        else if (transitionDir === 'left') {
+            // Enter RIGHT wall of new room (Column 19)
+            targetGridX = 19;
+            targetGridY = currentGridY; // Try to keep Y
+            scanAxis = 'vertical';
+        }
+        else if (transitionDir === 'down') {
+            // Enter TOP wall of new room (Row 0)
+            targetGridX = currentGridX; // Try to keep X
+            targetGridY = 0;
+            scanAxis = 'horizontal';
+        }
+        else if (transitionDir === 'up') {
+            // Enter BOTTOM wall of new room (Row 14)
+            targetGridX = currentGridX; // Try to keep X
+            targetGridY = 14;
+            scanAxis = 'horizontal';
+        }
+
+        // 3. Find the opening strictly on that border
+        const safePos = findSafeSpawn(nextRoomId, targetGridX, targetGridY, scanAxis);
+
+        player.x = safePos.x;
+        player.y = safePos.y;
+
+        scene.cameras.main.fadeIn(200, 0, 0, 0);
+        scene.physics.resume();
+        isTransitioning = false;
+    });
+}
+
+function findSafeSpawn(roomId, gridX, gridY, axis) {
+    const layout = ROOM_TEMPLATES[roomId];
+    const TILE_SIZE = 40;
+
+    // Limits
+    const MAX_ROW = 14; // 15 rows (0-14)
+    const MAX_COL = 19; // 20 cols (0-19)
+
+    // Helper to check if a tile is "Passable" (Not a wall)
+    const isSafe = (r, c) => {
+        if (r < 0 || r > MAX_ROW || c < 0 || c > MAX_COL) return false;
+        return layout[r][c] !== 'W';
+    };
+
+    // 1. Define the specific line we must stay on
+    // If scanning Vertical (entering Left/Right), we lock the Column (gridX) and search Rows.
+    // If scanning Horizontal (entering Up/Down), we lock the Row (gridY) and search Cols.
+
+    let bestRow = gridY;
+    let bestCol = gridX;
+    let found = false;
+
+    // Search Radius (how far to slide to find a door)
+    const MAX_SEARCH = 6;
+
+    if (axis === 'vertical') {
+        // We are locked to a specific Column (0 or 19). Find best Row.
+        // Check center first, then spread out: 0, +1, -1, +2, -2...
+        for (let i = 0; i <= MAX_SEARCH; i++) {
+            // Check Down
+            if (isSafe(gridY + i, gridX)) { bestRow = gridY + i; found = true; break; }
+            // Check Up
+            if (isSafe(gridY - i, gridX)) { bestRow = gridY - i; found = true; break; }
+        }
+    }
+    else {
+        // We are locked to a specific Row (0 or 14). Find best Column.
+        for (let i = 0; i <= MAX_SEARCH; i++) {
+            // Check Right
+            if (isSafe(gridY, gridX + i)) { bestCol = gridX + i; found = true; break; }
+            // Check Left
+            if (isSafe(gridY, gridX - i)) { bestCol = gridX - i; found = true; break; }
+        }
+    }
+
+    // Convert back to pixels
+    // We add +20 (Half Tile) to center the player in the tile
+    return {
+        x: bestCol * TILE_SIZE + (TILE_SIZE / 2),
+        y: bestRow * TILE_SIZE + (TILE_SIZE / 2)
+    };
 }
